@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "encoding/json"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -18,9 +19,17 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 }
 
 func (cfg *apiConfig) handlerReturnFileServerHits(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Add("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	s := fmt.Sprintf("Hits: %d", cfg.fileServerHits.Load())
+	s := fmt.Sprintf(
+		`<html>
+			<body>
+				<h1>Welcome, Chirpy Admin</h1>
+				<p>Chirpy has been visited %d times!</p>
+			</body>
+		</html>`,
+		cfg.fileServerHits.Load())
+	//s := fmt.Sprintf("Hits: %d", cfg.fileServerHits.Load())
 	w.Write([]byte(s))
 }
 
@@ -38,9 +47,13 @@ func main() {
 		"/app/",
 		http.StripPrefix("/app/", cfg.middlewareMetricsInc(http.FileServer(http.Dir(".")))),
 	)
-	mux.HandleFunc("GET /healthz", handlerReadiness)
-	mux.HandleFunc("GET /metrics", cfg.handlerReturnFileServerHits)
-	mux.HandleFunc("POST /reset", cfg.handlerResetFileServerHits)
+
+	mux.HandleFunc("GET /api/healthz", handlerReadiness)
+	mux.HandleFunc("POST /api/validate_chirp", handlerJsonResponse)
+
+	mux.HandleFunc("GET /admin/metrics", cfg.handlerReturnFileServerHits)
+	mux.HandleFunc("POST /admin/reset", cfg.handlerResetFileServerHits)
+
 	server := http.Server{
 		Addr:                         ":8080",
 		Handler:                      mux,
