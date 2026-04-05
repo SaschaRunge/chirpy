@@ -29,3 +29,8 @@ func handlerJsonResponse(w http.ResponseWriter, r *http.Request) {
 	}
 	respondWithJSON(w, 200, map[string]bool{"valid": true})
 }
+
+func sanitizeText(text string) string {
+	//badWords := [3]string{"kerfuffle", "sharbert", "fornax"}
+	return ""
+}
