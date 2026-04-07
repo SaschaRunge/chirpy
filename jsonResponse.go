@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) error {
+func respondWithJSON(w http.ResponseWriter, code int, payload any) error {
 	response, err := json.Marshal(payload)
 	if err != nil {
+		fmt.Printf("error marshaling json in respondWithJSON: %s", err)
 		return err
 	}
 

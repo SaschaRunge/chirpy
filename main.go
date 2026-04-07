@@ -3,47 +3,29 @@ package main
 import _ "github.com/lib/pq"
 
 import (
-	_ "encoding/json"
+	"database/sql"
 	"fmt"
 	"net/http"
-	"sync/atomic"
+	"os"
+
+	"github.com/SaschaRunge/chirpy/internal/database"
+	"github.com/joho/godotenv"
 )
 
-type apiConfig struct {
-	fileServerHits atomic.Int32
-}
-
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileServerHits.Add(1)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (cfg *apiConfig) handlerReturnFileServerHits(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	s := fmt.Sprintf(
-		`<html>
-			<body>
-				<h1>Welcome, Chirpy Admin</h1>
-				<p>Chirpy has been visited %d times!</p>
-			</body>
-		</html>`,
-		cfg.fileServerHits.Load())
-	//s := fmt.Sprintf("Hits: %d", cfg.fileServerHits.Load())
-	w.Write([]byte(s))
-}
-
-func (cfg *apiConfig) handlerResetFileServerHits(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	cfg.fileServerHits.Store(0)
-	w.Write([]byte("Reset FileServerHits counter to 0."))
-}
-
 func main() {
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		fmt.Printf("unable to open database: %s", err)
+		return
+	}
+
 	cfg := apiConfig{}
+	cfg.dbQueries = database.New(db)
+	cfg.platform = os.Getenv("PLATFORM")
+
 	mux := http.NewServeMux()
 	mux.Handle(
 		"/app/",
@@ -53,8 +35,10 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("POST /api/validate_chirp", handlerJsonResponse)
 
+	mux.HandleFunc("POST /api/users", cfg.handlerCreateUser)
+
 	mux.HandleFunc("GET /admin/metrics", cfg.handlerReturnFileServerHits)
-	mux.HandleFunc("POST /admin/reset", cfg.handlerResetFileServerHits)
+	mux.HandleFunc("POST /admin/reset", cfg.handlerResetUsers)
 
 	server := http.Server{
 		Addr:                         ":8080",
@@ -62,7 +46,7 @@ func main() {
 		DisableGeneralOptionsHandler: false,
 	}
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 
 	fmt.Println(err)
 }
