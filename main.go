@@ -1,5 +1,7 @@
 package main
 
+import _ "github.com/lib/pq"
+
 import (
 	_ "encoding/json"
 	"fmt"

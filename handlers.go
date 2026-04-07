@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 func handlerReadiness(w http.ResponseWriter, r *http.Request) {
@@ -27,10 +28,21 @@ func handlerJsonResponse(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, 400, "Chirp is too long")
 		return
 	}
-	respondWithJSON(w, 200, map[string]bool{"valid": true})
+	respondWithJSON(w, 200, map[string]any{
+		"valid":        true,
+		"cleaned_body": filterText(expJSON.Body)})
 }
 
-func sanitizeText(text string) string {
-	//badWords := [3]string{"kerfuffle", "sharbert", "fornax"}
-	return ""
+func filterText(text string) string {
+	const censored = "****"
+	badWords := [3]string{"kerfuffle", "sharbert", "fornax"}
+	words := strings.Split(text, " ")
+	for i, word := range words {
+		for _, badWord := range badWords {
+			if strings.ToLower(word) == badWord {
+				words[i] = censored
+			}
+		}
+	}
+	return strings.Join(words, " ")
 }
