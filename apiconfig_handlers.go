@@ -27,6 +27,24 @@ func userFrom(u database.User) user {
 	}
 }
 
+type chirp struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
+func chirpFrom(c database.Chirp) chirp {
+	return chirp{
+		ID:        c.ID,
+		CreatedAt: c.CreatedAt,
+		UpdatedAt: c.UpdatedAt,
+		Body:      c.Body,
+		UserID:    c.UserID,
+	}
+}
+
 type apiConfig struct {
 	dbQueries      *database.Queries
 	fileServerHits atomic.Int32
@@ -38,6 +56,30 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 		cfg.fileServerHits.Add(1)
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
+	expectedJSON, err := decodeJSON(r)
+	if err != nil {
+		respondWithError(w, 500, "Internal Server Error")
+		return
+	}
+	if len(expectedJSON.Body) > 140 {
+		respondWithError(w, 400, "chirp is too long")
+		return
+	}
+
+	createChirpParams := database.CreateChirpParams{
+		Body:   expectedJSON.Body,
+		UserID: expectedJSON.UserID,
+	}
+
+	newChirp, err := cfg.dbQueries.CreateChirp(r.Context(), createChirpParams)
+	if err != nil {
+		respondWithError(w, 500, "unable to create chirp")
+		return
+	}
+	respondWithJSON(w, http.StatusCreated, chirpFrom(newChirp))
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {

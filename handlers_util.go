@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 type requestContent struct {
+	Body   string    `json:"body"`
+	UserID uuid.UUID `json:"user_id"`
+
 	Email string `json:"email"`
-	Text  string `json:"text"`
 }
 
 func decodeJSON(r *http.Request) (requestContent, error) {
