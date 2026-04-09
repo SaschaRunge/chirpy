@@ -15,6 +15,7 @@ type requestContent struct {
 	Email string `json:"email"`
 }
 
+// TODO: make generic
 func decodeJSON(r *http.Request) (requestContent, error) {
 	decoder := json.NewDecoder(r.Body)
 	expectedJSON := requestContent{}
