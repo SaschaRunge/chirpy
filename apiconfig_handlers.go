@@ -100,11 +100,26 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	taggedUser := userFrom(dbUser)
 	respondWithJSON(w, 201, taggedUser)
 }
+func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("chirp_id"))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to parse UUID")
+		return
+	}
+
+	chirp, err := cfg.dbQueries.GetChirpByID(r.Context(), id)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Chirp Not Found")
+		return
+	}
+
+	respondWithJSON(w, 200, chirpFrom(chirp))
+}
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	chirps, err := cfg.dbQueries.GetChirps(r.Context())
 	if err != nil {
-		respondWithError(w, 500, "Internal Server Error")
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
 
