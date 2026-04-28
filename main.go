@@ -32,6 +32,7 @@ func main() {
 		http.StripPrefix("/app/", cfg.middlewareMetricsInc(http.FileServer(http.Dir(".")))),
 	)
 
+	mux.HandleFunc("GET /api/chirps", cfg.handlerGetChirps)
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 
 	mux.HandleFunc("POST /api/chirps", cfg.handlerCreateChirp)

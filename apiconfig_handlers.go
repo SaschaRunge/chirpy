@@ -101,6 +101,20 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	respondWithJSON(w, 201, taggedUser)
 }
 
+func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
+	chirps, err := cfg.dbQueries.GetChirps(r.Context())
+	if err != nil {
+		respondWithError(w, 500, "Internal Server Error")
+		return
+	}
+
+	jsonReadableChirps := []chirp{}
+	for _, c := range chirps {
+		jsonReadableChirps = append(jsonReadableChirps, chirpFrom(c))
+	}
+	respondWithJSON(w, http.StatusOK, jsonReadableChirps)
+}
+
 func (cfg *apiConfig) handlerReturnFileServerHits(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
