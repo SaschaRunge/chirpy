@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/SaschaRunge/chirpy/internal/auth"
 	"github.com/SaschaRunge/chirpy/internal/database"
 
 	"github.com/google/uuid"
@@ -90,7 +91,11 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	dbUser, err := cfg.dbQueries.CreateUser(r.Context(), expectedJSON.Email)
+	hash, err := auth.HashPassword(expectedJSON.Password)
+	dbUser, err := cfg.dbQueries.CreateUser(r.Context(), database.CreateUserParams{
+		Email:    expectedJSON.Email,
+		Password: hash,
+	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to create user")
 		fmt.Printf("Internal Server Error: Unable to create user: %s", err)

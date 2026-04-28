@@ -12,7 +12,8 @@ type requestContent struct {
 	Body   string    `json:"body"`
 	UserID uuid.UUID `json:"user_id"`
 
-	Email string `json:"email"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // TODO: make generic
