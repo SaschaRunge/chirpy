@@ -7,7 +7,11 @@ VALUES (
     $1,
     $2
 )
-RETURNING *;
+RETURNING *; -- should it not return password to the caller? 
 
 -- name: ResetUsers :exec
 DELETE FROM users;
+
+-- name: GetUserByEmail :one
+SELECT * FROM users
+WHERE email = $1;

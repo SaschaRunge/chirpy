@@ -135,6 +135,29 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, jsonReadableChirps)
 }
 
+func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
+	expectedJSON, err := decodeJSON(r)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to decode JSON rquest.")
+		return
+	}
+
+	user, err := cfg.dbQueries.GetUserByEmail(r.Context(), expectedJSON.Email)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	hash := user.Password
+	authorized, err := auth.CheckPasswordHash(expectedJSON.Password, hash)
+	if !authorized || err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, userFrom(user))
+}
+
 func (cfg *apiConfig) handlerReturnFileServerHits(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
