@@ -25,6 +25,7 @@ func main() {
 	cfg := apiConfig{}
 	cfg.dbQueries = database.New(db)
 	cfg.platform = os.Getenv("PLATFORM")
+	cfg.tokenSecret = os.Getenv("TOKEN_SECRET")
 
 	mux := http.NewServeMux()
 	mux.Handle(

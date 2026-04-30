@@ -17,6 +17,7 @@ type user struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
 func userFrom(u database.User) user {
@@ -50,7 +51,12 @@ type apiConfig struct {
 	dbQueries      *database.Queries
 	fileServerHits atomic.Int32
 	platform       string
+	tokenSecret    string
 }
+
+const (
+	defaultExpirationTime = time.Hour
+)
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,9 +76,21 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id, err := auth.ValidateJWT(token, cfg.tokenSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	createChirpParams := database.CreateChirpParams{
 		Body:   expectedJSON.Body,
-		UserID: expectedJSON.UserID,
+		UserID: id,
 	}
 
 	newChirp, err := cfg.dbQueries.CreateChirp(r.Context(), createChirpParams)
@@ -138,7 +156,7 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	expectedJSON, err := decodeJSON(r)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to decode JSON rquest.")
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to decode JSON request.")
 		return
 	}
 
@@ -155,7 +173,21 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, userFrom(user))
+	response := userFrom(user)
+	expiresInSeconds := time.Second * time.Duration(expectedJSON.ExpiresInSeconds)
+	if expiresInSeconds == 0 {
+		expiresInSeconds = defaultExpirationTime
+	} else if expiresInSeconds > defaultExpirationTime {
+		expiresInSeconds = defaultExpirationTime
+	}
+	token, err := auth.MakeJWT(user.ID, cfg.tokenSecret, expiresInSeconds)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to generate JWT.")
+		return
+	}
+	response.Token = token
+
+	respondWithJSON(w, http.StatusOK, response)
 }
 
 func (cfg *apiConfig) handlerReturnFileServerHits(w http.ResponseWriter, r *http.Request) {
