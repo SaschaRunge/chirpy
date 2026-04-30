@@ -1,8 +1,24 @@
 package auth
 
 import (
+	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/alexedwards/argon2id"
 )
+
+func GetBearerToken(headers http.Header) (string, error) {
+	bearer := headers.Get("Authorization")
+	bearer, found := strings.CutPrefix(bearer, "Bearer")
+	if !found || bearer == "" {
+		return "", fmt.Errorf("invalid authorization header format")
+	}
+
+	bearer = strings.Trim(bearer, " ")
+
+	return bearer, nil
+}
 
 func HashPassword(password string) (string, error) {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
