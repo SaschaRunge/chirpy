@@ -11,10 +11,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const (
-	totallyPrivateString string = "myPrivateKey"
-)
-
 func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		Issuer:    "chirpy-access",
@@ -23,12 +19,7 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 		Subject:   userID.String(),
 	})
 
-	// TODO this is a mockup
-	privateKey := []byte(totallyPrivateString) //
-	// privateKey, err :=rsa.GenerateKey(rand.Reader, 1024)
-	//if err != nil {
-	//return "", fmt.Errorf("failed to generate key: %w", err)
-	//}
+	privateKey := []byte(tokenSecret) //
 
 	signedString, err := token.SignedString(privateKey)
 	if err != nil {
@@ -39,23 +30,23 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 }
 
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
-	token, err := jwt.ParseWithClaims(tokenString, jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
-		return []byte(totallyPrivateString), nil
+	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
+		return []byte(tokenSecret), nil
 	})
 
-	//TODO differentiate errors
 	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("unexpected error parsing jwt: %w", err)
+		return uuid.UUID{}, err
 	}
 
-	id, err := token.Claims.GetSubject()
+	subject, err := token.Claims.GetSubject()
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("unable to retrieve uuid from token: %w", err)
 	}
-	idAsUuid, err := uuid.Parse(id)
+
+	id, err := uuid.Parse(subject)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("unable to parse uuid from token: %w", err)
 	}
 
-	return idAsUuid, nil
+	return id, nil
 }
