@@ -175,11 +175,10 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 
 	response := userFrom(user)
 	expiresInSeconds := time.Second * time.Duration(expectedJSON.ExpiresInSeconds)
-	if expiresInSeconds == 0 {
-		expiresInSeconds = defaultExpirationTime
-	} else if expiresInSeconds > defaultExpirationTime {
+	if expiresInSeconds <= 0 || expiresInSeconds >= 3600*time.Second {
 		expiresInSeconds = defaultExpirationTime
 	}
+
 	token, err := auth.MakeJWT(user.ID, cfg.tokenSecret, expiresInSeconds)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to generate JWT.")
