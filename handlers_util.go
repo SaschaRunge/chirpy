@@ -4,29 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
-type requestContent struct {
-	Body   string    `json:"body"`
-	UserID uuid.UUID `json:"user_id"`
-
-	Email            string `json:"email"`
-	Password         string `json:"password"`
-	ExpiresInSeconds int    `json:"expires_in_seconds"`
-}
-
-// TODO: make generic
-func decodeJSON(r *http.Request) (requestContent, error) {
+func decodeJSON[T any](r *http.Request) (T, error) {
 	decoder := json.NewDecoder(r.Body)
-	expectedJSON := requestContent{}
+	var expectedJSON T
 	err := decoder.Decode(&expectedJSON)
 	if err != nil {
-		return requestContent{}, err
+		var zero T
+		return zero, err
 	}
 	return expectedJSON, nil
 }
+
+// TODO: make generic
 
 func filterText(text string) string {
 	const censored = "****"
