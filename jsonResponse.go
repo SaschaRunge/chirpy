@@ -7,6 +7,11 @@ import (
 )
 
 func respondWithJSON(w http.ResponseWriter, code int, payload any) error {
+	if payload == nil {
+		w.WriteHeader(code)
+		return nil
+	}
+
 	response, err := json.Marshal(payload)
 	if err != nil {
 		fmt.Printf("error marshaling json in respondWithJSON: %s", err)

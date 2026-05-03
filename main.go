@@ -45,6 +45,8 @@ func main() {
 
 	mux.HandleFunc("PUT /api/users", cfg.handlerChangePassword)
 
+	mux.HandleFunc("DELETE /api/chirps/{chirp_id}", cfg.handlerDeleteChirpByID)
+
 	mux.HandleFunc("GET /admin/metrics", cfg.handlerReturnFileServerHits)
 	mux.HandleFunc("POST /admin/reset", cfg.handlerResetUsers)
 

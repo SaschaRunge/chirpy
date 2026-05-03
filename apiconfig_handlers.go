@@ -80,13 +80,7 @@ func (cfg *apiConfig) handlerChangePassword(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
-		return
-	}
-
-	id, err := auth.ValidateJWT(token, cfg.tokenSecret)
+	id, err := validateUser(r, cfg.tokenSecret)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
 		return
@@ -179,6 +173,37 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 
 	taggedUser := userFrom(dbUser)
 	respondWithJSON(w, 201, taggedUser)
+}
+
+func (cfg *apiConfig) handlerDeleteChirpByID(w http.ResponseWriter, r *http.Request) {
+	userID, err := validateUser(r, cfg.tokenSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	chirpID, err := uuid.Parse(r.PathValue("chirp_id"))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to parse UUID")
+		return
+	}
+
+	chirp, err := cfg.dbQueries.GetChirpByID(r.Context(), chirpID)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Not Found")
+		return
+	}
+	if userID != chirp.UserID {
+		respondWithError(w, http.StatusForbidden, "Forbidden")
+		return
+	}
+
+	if err = cfg.dbQueries.DeleteChirpByID(r.Context(), chirpID); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to delete chirp.")
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
 }
 
 func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
