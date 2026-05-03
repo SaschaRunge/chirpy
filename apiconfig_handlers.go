@@ -68,6 +68,50 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	})
 }
 
+func (cfg *apiConfig) handlerChangePassword(w http.ResponseWriter, r *http.Request) {
+	type changePasswordRequest struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	body, err := decodeJSON[changePasswordRequest](r)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id, err := auth.ValidateJWT(token, cfg.tokenSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	hash, err := auth.HashPassword(body.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	user, err := cfg.dbQueries.UpdateUser(r.Context(), database.UpdateUserParams{
+		ID:       id,
+		Email:    body.Email,
+		Password: hash,
+	})
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, userFrom(user))
+}
+
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 	type createChirpRequest struct {
 		Body   string    `json:"body"`
@@ -136,6 +180,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	taggedUser := userFrom(dbUser)
 	respondWithJSON(w, 201, taggedUser)
 }
+
 func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("chirp_id"))
 	if err != nil {
