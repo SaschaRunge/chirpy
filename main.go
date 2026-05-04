@@ -26,6 +26,7 @@ func main() {
 	cfg.dbQueries = database.New(db)
 	cfg.platform = os.Getenv("PLATFORM")
 	cfg.tokenSecret = os.Getenv("TOKEN_SECRET")
+	cfg.polkaKey = os.Getenv("POLKA_KEY")
 
 	mux := http.NewServeMux()
 	mux.Handle(
@@ -42,6 +43,7 @@ func main() {
 	mux.HandleFunc("POST /api/refresh", cfg.handlerRefresh)
 	mux.HandleFunc("POST /api/revoke", cfg.handlerRevoke)
 	mux.HandleFunc("POST /api/users", cfg.handlerCreateUser)
+	mux.HandleFunc("POST /api/polka/webhooks", cfg.handlerUpgradeUser)
 
 	mux.HandleFunc("PUT /api/users", cfg.handlerChangePassword)
 

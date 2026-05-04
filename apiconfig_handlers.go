@@ -25,14 +25,16 @@ type user struct {
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 func userFrom(u database.User) user {
 	return user{
-		ID:        u.ID,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
-		Email:     u.Email,
+		ID:          u.ID,
+		CreatedAt:   u.CreatedAt,
+		UpdatedAt:   u.UpdatedAt,
+		Email:       u.Email,
+		IsChirpyRed: u.IsChirpyRed,
 	}
 }
 
@@ -59,6 +61,7 @@ type apiConfig struct {
 	fileServerHits atomic.Int32
 	platform       string
 	tokenSecret    string
+	polkaKey       string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -229,6 +232,8 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//r.URL.Query()
+
 	jsonReadableChirps := []chirp{}
 	for _, c := range chirps {
 		jsonReadableChirps = append(jsonReadableChirps, chirpFrom(c))
@@ -352,4 +357,38 @@ func (cfg *apiConfig) handlerResetUsers(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 	cfg.dbQueries.ResetUsers(r.Context())
 	w.Write([]byte("Reset users db."))
+}
+
+func (cfg *apiConfig) handlerUpgradeUser(w http.ResponseWriter, r *http.Request) {
+	type requestJSON struct {
+		Event string `json:"event"`
+		Data  struct {
+			UserID uuid.UUID `json:"user_id"`
+		} `json:"data"`
+	}
+
+	polkaKey, err := auth.GetAPIKey(r.Header)
+
+	if err != nil || polkaKey != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	body, err := decodeJSON[requestJSON](r)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Internal Server Error: Unable to generate JWT.")
+		return
+	}
+
+	if body.Event != "user.upgraded" {
+		respondWithJSON(w, http.StatusNoContent, nil)
+		return
+	}
+
+	if err = cfg.dbQueries.UpgradeUser(r.Context(), body.Data.UserID); err != nil {
+		respondWithError(w, http.StatusNotFound, "Not Found")
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
 }
