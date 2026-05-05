@@ -232,7 +232,7 @@ func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//r.URL.Query()
+	//r.URL.Query() .
 
 	jsonReadableChirps := []chirp{}
 	for _, c := range chirps {
