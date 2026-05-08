@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -226,13 +227,24 @@ func (cfg *apiConfig) handlerGetChirpByID(w http.ResponseWriter, r *http.Request
 }
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, r *http.Request) {
-	chirps, err := cfg.dbQueries.GetChirps(r.Context())
+	chirps := []database.Chirp{}
+	err := errors.New("")
+	if r.URL.Query().Has("author_id") {
+		userID := uuid.UUID{}
+		userID, err = uuid.Parse(r.URL.Query().Get("author_id"))
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Bad Request: Invalid authorID")
+			return
+		}
+		// TODO: Should filter "Not found"
+		chirps, err = cfg.dbQueries.GetChirpsByUserID(r.Context(), userID)
+	} else {
+		chirps, err = cfg.dbQueries.GetChirps(r.Context())
+	}
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}
-
-	//r.URL.Query() .
 
 	jsonReadableChirps := []chirp{}
 	for _, c := range chirps {
